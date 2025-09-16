@@ -31,6 +31,14 @@ write_csv(
   'data/meta/NHL_Teams_19171918_20242025.csv'
 )
 
+# Get all franchises from 1917-1918 to 2024-2025.
+NHL_Franchises_19171918_20242025 <- get_franchises() %>% 
+  arrange(id)
+write_csv(
+  NHL_Franchises_19171918_20242025, 
+  'data/meta/NHL_Franchises_19171918_20242025.csv'
+)
+
 # Get all games from 1917-1918 to 2024-2025.
 NHL_Games_19171918_20242025 <- get_games() %>% 
   filter(season <= 20242025) %>% 
