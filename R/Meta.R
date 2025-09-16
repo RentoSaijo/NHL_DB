@@ -2,7 +2,21 @@
 suppressMessages(library(tidyverse))
 suppressMessages(library(nhlscraper))
 
+# Get all seasons from 1917-1918 to 2024-2025.
+NHL_Seasons_19171918_20242025 <- get_seasons() %>% 
+  filter(id <= 20242025) %>% 
+  arrange(id)
+write_csv(
+  NHL_Seasons_19171918_20242025, 
+  'data/meta/NHL_Seasons_19171918_20242025.csv'
+)
+
 # Get all games from 1917-1918 to 2024-2025.
 NHL_Games_19171918_20242025 <- get_games() %>% 
-  filter(season <= 20242025)
-write_csv(NHL_Games_19171918_20242025, 'data/meta/NHL_Games_19171918_20242025.csv')
+  filter(season <= 20242025) %>% 
+  arrange(season, gameNumber)
+write_csv(
+  NHL_Games_19171918_20242025, 
+  'data/meta/NHL_Games_19171918_20242025.csv'
+)
+
