@@ -41,3 +41,11 @@ write_csv(
   NHL_Officials_09_16_2025, 
   'data/other/NHL_Officials_09_16_2025.csv'
 )
+
+# Get officials registered by 09-16-2025.
+NHL_Streams_09_16_2025 <- get_streams() %>% 
+  arrange(id)
+write_csv(
+  NHL_Streams_09_16_2025, 
+  'data/other/NHL_Streams_09_16_2025.csv'
+)
