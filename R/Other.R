@@ -26,10 +26,10 @@ write_csv(
   'data/other/NHL_Venues_09_16_2025.csv'
 )
 
-# Get terminologies registered by 09-16-2025.
-NHL_Glossary_09_16_2025 <- get_glossary() %>% 
-  arrange(id)
+# Get attendances from 1917-1918 to 2024-2025.
+NHL_Attendances_19171918_20242025 <- get_attendance() %>% 
+  arrange(seasonId)
 write_csv(
-  NHL_Glossary_09_16_2025, 
-  'data/other/NHL_Glossary_09_16_2025.csv'
+  NHL_Attendances_19171918_20242025, 
+  'data/other/NHL_Attendances_19171918_20242025.csv'
 )
