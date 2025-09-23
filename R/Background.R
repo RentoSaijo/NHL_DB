@@ -18,15 +18,6 @@ get_gc_pbps <- function(games) {
     bind_rows(.id = 'gameId')
 }
 
-# Get all games from 1917-1918 to 2024-2025.
-NHL_Games_19171918_20242025 <- get_games() %>% 
-  filter(season <= 20242025) %>% 
-  arrange(season, gameNumber)
-write_csv(
-  NHL_Games_19171918_20242025, 
-  'data/game/meta/NHL_Games_19171918_20242025.csv'
-)
-
 # Get all GC play-by-plays from 2005-2006 to 2024-2025.
 NHL_Seasons_20052006_20242025 <- read_csv(
   'data/league/meta/NHL_Seasons_19171918_20242025.csv',
@@ -41,9 +32,7 @@ for (s in NHL_Seasons_20052006_20242025$id) {
   games <- NHL_Games_20052006_20242025 %>% 
     filter(season == s)
   write_csv(
-    get_gc_pbps(games),
+    get_gc_pbps(games), 
     sprintf('data/game/pbps/gc/NHL_PBPS_GC_%s', s)
   )
 }
-
-test <- read_csv('data/game/pbps/gc/NHL_PBPS_GC_20242025')
