@@ -10,7 +10,6 @@ aggregate_gc_pbps <- function(games) {
     map(~{nhlscraper::gc_pbp(.x)}) %>%
     bind_rows(.id = 'gameId')
 }
-
 aggregate_wsc_pbps <- function(games) {
   ids <- games %>% pull(id)
   ids %>%
@@ -18,30 +17,40 @@ aggregate_wsc_pbps <- function(games) {
     map(~{nhlscraper::wsc_pbp(.x)}) %>%
     bind_rows(.id = 'gameId')
 }
+aggregate_shifts <- function(games) {
+  ids <- games %>% pull(id)
+  ids %>%
+    set_names() %>%
+    map(~{nhlscraper::shifts(.x)}) %>%
+    bind_rows(.id = 'gameId')
+}
 
-# Get all games from 1917-1918 to 2024-2025.
-NHL_Games_19171918_20242025 <- nhlscraper::games() %>% 
-  filter(season <= 20242025) %>% 
+# Get all games.
+START_SEASON <- 19171918
+END_SEASON   <- 20252026
+NHL_GAMES    <- nhlscraper::games() %>% 
+  filter(season >= START_SEASON) %>% 
+  filter(season <= END_SEASON) %>% 
   filter(gameType %in% 1:3) %>% 
   arrange(id)
 write_csv(
-  NHL_Games_19171918_20242025, 
-  'data/game/meta/NHL_Games_19171918_20242025.csv'
+  NHL_GAMES, 
+  paste0('data/game/meta/NHL_Games_', START_SEASON, '_', END_SEASON, '.csv')
 )
 
-# Get all GC play-by-plays from 2005-2006 to 2024-2025.
-NHL_Seasons_20052006_20242025 <- read_csv(
-  'data/league/meta/NHL_Seasons_19171918_20242025.csv',
+# Get all GC play-by-plays.
+START_SEASON <- 20242025
+END_SEASON   <- 20252026
+NHL_GAMES    <- read_csv(
+  paste0('data/game/meta/NHL_Games_', 19171918, '_', END_SEASON, '.csv'),
   show_col_types = FALSE
 ) %>% 
-  filter(id >= 20052006)
-NHL_Games_20052006_20242025 <- read_csv(
-  'data/game/meta/NHL_Games_19171918_20242025.csv',
-  show_col_types = FALSE
-) %>% 
-  filter(season >= 20052006)
-for (s in NHL_Seasons_20052006_20242025$id) {
-  games <- NHL_Games_20052006_20242025 %>% 
+  filter(season >= START_SEASON) %>% 
+  filter(season <= END_SEASON) %>% 
+  filter(gameStateId == 7)
+NHL_SEASONS <- seq(START_SEASON, END_SEASON, by = 10001)
+for (s in NHL_SEASONS) {
+  games <- NHL_GAMES %>% 
     filter(season == s)
   write_csv(
     aggregate_gc_pbps(games),
@@ -49,12 +58,42 @@ for (s in NHL_Seasons_20052006_20242025$id) {
   )
 }
 
-# Get all WSC play-by-plays from 2005-2006 to 2024-2025.
-for (s in NHL_Seasons_20052006_20242025$id) {
-  games <- NHL_Games_20052006_20242025 %>% 
+# Get all WSC play-by-plays.
+START_SEASON <- 20242025
+END_SEASON   <- 20252026
+NHL_GAMES    <- read_csv(
+  paste0('data/game/meta/NHL_Games_', 19171918, '_', END_SEASON, '.csv'),
+  show_col_types = FALSE
+) %>% 
+  filter(season >= START_SEASON) %>% 
+  filter(season <= END_SEASON) %>% 
+  filter(gameStateId == 7)
+NHL_SEASONS <- seq(START_SEASON, END_SEASON, by = 10001)
+for (s in NHL_SEASONS) {
+  games <- NHL_GAMES %>% 
     filter(season == s)
   write_csv(
-    aggregate_wsc_pbps(games), 
+    aggregate_wsc_pbps(games),
     sprintf('data/game/pbps/wsc/NHL_PBPS_WSC_%s.csv', s)
+  )
+}
+
+# Get all shift charts.
+START_SEASON <- 20242025
+END_SEASON   <- 20252026
+NHL_GAMES    <- read_csv(
+  paste0('data/game/meta/NHL_Games_', 19171918, '_', END_SEASON, '.csv'),
+  show_col_types = FALSE
+) %>% 
+  filter(season >= START_SEASON) %>% 
+  filter(season <= END_SEASON) %>% 
+  filter(gameStateId == 7)
+NHL_SEASONS <- seq(START_SEASON, END_SEASON, by = 10001)
+for (s in NHL_SEASONS) {
+  games <- NHL_GAMES %>% 
+    filter(season == s)
+  write_csv(
+    aggregate_shifts(games),
+    sprintf('data/game/shifts/NHL_SHIFTS_%s.csv', s)
   )
 }
