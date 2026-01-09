@@ -39,7 +39,7 @@ write_csv(
 )
 
 # Get all GC play-by-plays.
-START_SEASON <- 20242025
+START_SEASON <- 20052006
 END_SEASON   <- 20252026
 NHL_GAMES    <- read_csv(
   paste0('data/game/meta/NHL_Games_', 19171918, '_', END_SEASON, '.csv'),
@@ -59,7 +59,7 @@ for (s in NHL_SEASONS) {
 }
 
 # Get all WSC play-by-plays.
-START_SEASON <- 20242025
+START_SEASON <- 20052006
 END_SEASON   <- 20252026
 NHL_GAMES    <- read_csv(
   paste0('data/game/meta/NHL_Games_', 19171918, '_', END_SEASON, '.csv'),
@@ -79,7 +79,7 @@ for (s in NHL_SEASONS) {
 }
 
 # Get all shift charts.
-START_SEASON <- 20242025
+START_SEASON <- 20052006
 END_SEASON   <- 20252026
 NHL_GAMES    <- read_csv(
   paste0('data/game/meta/NHL_Games_', 19171918, '_', END_SEASON, '.csv'),
