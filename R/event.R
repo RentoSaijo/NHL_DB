@@ -228,12 +228,14 @@ update_season_replays <- function(season_id) {
     nrow(events)
   ))
   if (!nrow(events)) {
-    if (!is.null(existing_replays)) {
-      write_output_parquet(sort_replay_rows(existing_replays), replay_path)
-    }
+    message(sprintf('Replays %s: no new goal events found; leaving remote parquet unchanged.', season_id))
     return(invisible(existing_replays))
   }
   new_replays <- aggregate_replays(events, progress_label = sprintf('Replays %s', season_id))
+  if (!nrow(new_replays)) {
+    message(sprintf('Replays %s: no new replay rows were returned; leaving remote parquet unchanged.', season_id))
+    return(invisible(existing_replays))
+  }
   merged      <- bind_dynamic_rows(list(existing_replays, new_replays))
   merged      <- sort_replay_rows(merged)
   write_output_parquet(merged, replay_path)

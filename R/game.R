@@ -326,12 +326,14 @@ update_season_parquet <- function(games, path, fetch_fun, progress_label) {
     nrow(games_to_scrape)
   ))
   if (!nrow(games_to_scrape)) {
-    if (!is.null(existing_data)) {
-      write_output_parquet(sort_game_rows(existing_data), path)
-    }
+    message(sprintf('%s: no new games found; leaving remote parquet unchanged.', progress_label))
     return(invisible(existing_data))
   }
   new_data    <- aggregate_game_data(games_to_scrape, fetch_fun, progress_label = progress_label)
+  if (!nrow(new_data)) {
+    message(sprintf('%s: no new rows were returned; leaving remote parquet unchanged.', progress_label))
+    return(invisible(existing_data))
+  }
   merged_data <- merge_game_data(existing_data, new_data, progress_label)
   write_output_parquet(merged_data, path)
   invisible(merged_data)
