@@ -1,0 +1,101 @@
+name: Update HuggingFace datasets
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+      timezone: 'America/New_York'
+  workflow_dispatch:
+    inputs:
+      target_repo:
+        description: 'HuggingFace dataset repo to upload generated parquet files to.'
+        required: true
+        default: 'RentoSaijo/NHL_DB'
+      seasons:
+        description: 'Optional comma-separated season IDs, such as 20252026.'
+        required: false
+        default: ''
+      datasets:
+        description: 'Optional comma-separated datasets: gc_raw,gc,wsc_raw,wsc,scs,scss.'
+        required: false
+        default: ''
+      dry_run:
+        description: 'Generate and validate files without uploading.'
+        required: true
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+
+permissions: read-all
+
+concurrency:
+  group: nhl-db-update
+  cancel-in-progress: false
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    env:
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      TARGET_REPO: ${{ github.event.inputs.target_repo || 'RentoSaijo/NHL_DB' }}
+      NHL_DB_OUTPUT_DIR: output
+      NHL_DB_HF_SOURCE_REPO: ${{ github.event.inputs.target_repo || 'RentoSaijo/NHL_DB' }}
+      NHL_DB_SEASONS: ${{ github.event.inputs.seasons || '' }}
+      NHL_DB_DATASETS: ${{ github.event.inputs.datasets || '' }}
+      NHL_DB_TIMEZONE: America/New_York
+      DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - name: Install R dependencies
+        shell: Rscript {0}
+        run: |
+          install.packages(c('arrow', 'remotes'))
+          remotes::install_github('RentoSaijo/nhlscraper', dependencies = TRUE, upgrade = 'never')
+
+      - name: Install HuggingFace CLI
+        run: python -m pip install --upgrade 'huggingface_hub[cli]'
+
+      - name: Generate game parquet files
+        run: Rscript R/game.R
+
+      - name: Generate event parquet files
+        run: Rscript R/event.R
+
+      - name: Validate generated files
+        shell: Rscript {0}
+        run: |
+          files <- list.files(Sys.getenv('NHL_DB_OUTPUT_DIR'), recursive = TRUE, full.names = TRUE)
+          bad <- files[grepl('\\.(csv|csv\\.gz)$', files)]
+          if (length(bad)) {
+            stop('CSV output detected: ', paste(bad, collapse = ', '))
+          }
+          parquet_files <- files[grepl('\\.parquet$', files)]
+          if (!length(parquet_files)) {
+            message('No parquet files were generated; nothing to upload.')
+            quit(save = 'no')
+          }
+          invisible(lapply(parquet_files, arrow::read_parquet))
+
+      - name: Upload HuggingFace dataset
+        if: env.DRY_RUN != 'true'
+        run: |
+          test -n "$HF_TOKEN"
+          if ! find "$NHL_DB_OUTPUT_DIR" -name '*.parquet' -type f | grep -q .; then
+            echo "No parquet files were generated; skipping upload."
+            exit 0
+          fi
+          hf upload-large-folder "$TARGET_REPO" "$NHL_DB_OUTPUT_DIR" \
+            --repo-type dataset \
+            --include '*.parquet' \
+            --token "$HF_TOKEN" \
+            --num-workers 4

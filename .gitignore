@@ -1,0 +1,12 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+.DS_Store
+**/.DS_Store
+*.csv
+*.csv.gz
+*.parquet
+output/
+output-bootstrap-*/
+*.Rproj
