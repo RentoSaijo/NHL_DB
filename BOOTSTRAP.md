@@ -21,7 +21,7 @@ hf repo-files delete "$HF_REPO" '*' \
 Run this setup in each terminal session.
 
 ```sh
-cd /Users/rsai_91/Desktop/Other/Projects/NHL_DB
+cd /path/to/NHL_DB
 
 export NHL_DB_OUTPUT_DIR="$PWD/output-bootstrap-2026-05-15"
 export NHL_DB_UPDATE_DATE='2026-05-16'
