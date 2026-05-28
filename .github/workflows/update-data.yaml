@@ -45,6 +45,7 @@ jobs:
       NHL_DB_SEASONS: ${{ github.event.inputs.seasons || '' }}
       NHL_DB_DATASETS: ${{ github.event.inputs.datasets || '' }}
       NHL_DB_TIMEZONE: America/New_York
+      NHL_DB_DOWNLOAD_TIMEOUT: '3600'
       DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
 
     steps:
@@ -59,7 +60,7 @@ jobs:
       - name: Install R dependencies
         shell: Rscript {0}
         run: |
-          install.packages(c('arrow', 'remotes'))
+          install.packages(c('arrow', 'httr2', 'remotes'))
           remotes::install_git(
             'https://github.com/RentoSaijo/nhlscraper.git',
             dependencies = TRUE,

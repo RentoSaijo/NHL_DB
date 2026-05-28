@@ -20,13 +20,15 @@ arg_value <- function(name, default = '') {
   sub(prefix, '', hit[[1]], fixed = TRUE)
 }
 OUTPUT_DIR     <- arg_value('output-dir', 'output')
-HF_SOURCE_REPO <- arg_value('hf-source-repo', 'RentoSaijo/NHL_DB-staging')
+HF_SOURCE_REPO <- arg_value('hf-source-repo', 'RentoSaijo/NHL_DB')
 SEASON_IDS     <- arg_value('seasons', '')
 DATASET_IDS    <- arg_value('datasets', '')
 UPDATE_DATE    <- arg_value('update-date', '')
 MAX_GAMES      <- arg_value('max-games', '')
 OFFLINE_SOURCE <- arg_value('offline-source', 'false')
 TIMEZONE       <- arg_value('timezone', 'America/New_York')
+DOWNLOAD_TIMEOUT <- arg_value('download-timeout', '3600')
+DOWNLOAD_RETRIES <- arg_value('download-retries', '3')
 
 # Normalize run settings.
 if (!nzchar(UPDATE_DATE)) {
@@ -38,6 +40,15 @@ if (is.na(MAX_GAMES) || MAX_GAMES <= 0L) {
   MAX_GAMES <- Inf
 }
 OFFLINE_SOURCE <- tolower(OFFLINE_SOURCE) %in% c('true', '1', 'yes', 'y')
+DOWNLOAD_TIMEOUT <- suppressWarnings(as.integer(DOWNLOAD_TIMEOUT))
+if (is.na(DOWNLOAD_TIMEOUT) || DOWNLOAD_TIMEOUT <= 0L) {
+  DOWNLOAD_TIMEOUT <- 3600L
+}
+DOWNLOAD_RETRIES <- suppressWarnings(as.integer(DOWNLOAD_RETRIES))
+if (is.na(DOWNLOAD_RETRIES) || DOWNLOAD_RETRIES <= 0L) {
+  DOWNLOAD_RETRIES <- 3L
+}
+options(timeout = max(getOption('timeout'), DOWNLOAD_TIMEOUT))
 
 # ----- Define Helpers ----- #
 
@@ -56,6 +67,29 @@ hf_url <- function(repo_id, path) {
   )
 }
 
+# Get remote file status.
+get_remote_file_status <- function(url) {
+  response <- tryCatch(
+    httr2::request(url) |>
+      httr2::req_method('HEAD') |>
+      httr2::req_timeout(DOWNLOAD_TIMEOUT) |>
+      httr2::req_error(is_error = function(resp) FALSE) |>
+      httr2::req_perform(),
+    error = function(e) e
+  )
+  if (inherits(response, 'error')) {
+    return('unknown')
+  }
+  status <- httr2::resp_status(response)
+  if (status == 404L) {
+    return('missing')
+  }
+  if (status >= 200L && status < 400L) {
+    return('exists')
+  }
+  'unknown'
+}
+
 # Download parquet from HuggingFace.
 read_hf_parquet <- function(path, repos = c(HF_SOURCE_REPO, 'RentoSaijo/NHL_DB')) {
   local_path <- file.path(OUTPUT_DIR, path)
@@ -66,16 +100,49 @@ read_hf_parquet <- function(path, repos = c(HF_SOURCE_REPO, 'RentoSaijo/NHL_DB')
     return(NULL)
   }
   for (repo_id in unique(repos[nzchar(repos)])) {
-    tmp <- tempfile(fileext = '.parquet')
-    ok  <- tryCatch(
-      utils::download.file(hf_url(repo_id, path), tmp, mode = 'wb', quiet = TRUE) == 0L,
-      error = function(e) FALSE,
-      warning = function(w) FALSE
-    )
-    if (isTRUE(ok) && file.exists(tmp) && file.info(tmp)$size > 0L) {
-      message(sprintf('Loaded existing parquet from %s/%s.', repo_id, path))
-      return(as.data.frame(arrow::read_parquet(tmp), stringsAsFactors = FALSE))
+    url    <- hf_url(repo_id, path)
+    status <- get_remote_file_status(url)
+    if (identical(status, 'missing')) {
+      next
     }
+    last_error <- NULL
+    for (attempt in seq_len(DOWNLOAD_RETRIES)) {
+      tmp <- tempfile(fileext = '.parquet')
+      ok  <- tryCatch(
+        utils::download.file(url, tmp, mode = 'wb', quiet = TRUE) == 0L,
+        error = function(e) {
+          last_error <<- conditionMessage(e)
+          FALSE
+        },
+        warning = function(w) {
+          last_error <<- conditionMessage(w)
+          FALSE
+        }
+      )
+      if (isTRUE(ok) && file.exists(tmp) && file.info(tmp)$size > 0L) {
+        out <- tryCatch(
+          as.data.frame(arrow::read_parquet(tmp), stringsAsFactors = FALSE),
+          error = function(e) {
+            last_error <<- conditionMessage(e)
+            NULL
+          }
+        )
+        if (!is.null(out)) {
+          message(sprintf('Loaded existing parquet from %s/%s.', repo_id, path))
+          return(out)
+        }
+      }
+      message(sprintf('Attempt %s/%s failed loading %s/%s.', attempt, DOWNLOAD_RETRIES, repo_id, path))
+    }
+    if (!is.null(last_error) && grepl('404|Not Found', last_error, ignore.case = TRUE)) {
+      next
+    }
+    stop(sprintf(
+      'Unable to load existing parquet from %s/%s; aborting to avoid treating remote data as missing. Last error: %s',
+      repo_id,
+      path,
+      ifelse(is.null(last_error), 'unknown', last_error)
+    ))
   }
   NULL
 }
