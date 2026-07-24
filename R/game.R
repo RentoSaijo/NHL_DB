@@ -442,6 +442,12 @@ get_completed_games <- function(season_ids, update_date) {
 # Define datasets.
 datasets <- list(
   list(
+    id        = 'rosters',
+    label     = 'Game rosters',
+    path      = 'data/game/rosters/NHL_ROSTERS_%s.parquet',
+    fetch_fun = nhlscraper::game_roster
+  ),
+  list(
     id       = 'gc_raw',
     label    = 'GC raw play-by-play',
     path     = 'data/game/pbps/gc/NHL_PBPS_GC_Raw_%s.parquet',

@@ -15,7 +15,7 @@ on:
         required: false
         default: ''
       datasets:
-        description: 'Optional comma-separated datasets: gc_raw,gc,wsc_raw,wsc,scs,scss.'
+        description: 'Optional comma-separated datasets: rosters,gc_raw,gc,wsc_raw,wsc,scs,scss.'
         required: false
         default: ''
       dry_run:
