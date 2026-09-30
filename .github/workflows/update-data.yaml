@@ -101,7 +101,32 @@ jobs:
             echo "No parquet files were generated; skipping upload."
             exit 0
           fi
-          hf upload "$TARGET_REPO" "$NHL_DB_OUTPUT_DIR" . \
-            --repo-type dataset \
-            --include '*.parquet' \
-            --token "$HF_TOKEN"
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          from huggingface_hub import CommitOperationAdd, HfApi
+
+          output_dir = Path(os.environ['NHL_DB_OUTPUT_DIR'])
+          operations = [
+              CommitOperationAdd(
+                  path_in_repo=path.relative_to(output_dir).as_posix(),
+                  path_or_fileobj=path,
+              )
+              for path in sorted(output_dir.rglob('*.parquet'))
+          ]
+          api = HfApi(token=os.environ['HF_TOKEN'])
+          api.preupload_lfs_files(
+              repo_id=os.environ['TARGET_REPO'],
+              additions=operations,
+              repo_type='dataset',
+              gitignore_content='',
+              free_memory=False,
+          )
+          result = api.create_commit(
+              repo_id=os.environ['TARGET_REPO'],
+              operations=operations,
+              repo_type='dataset',
+              commit_message='Update NHL datasets',
+          )
+          print(result.commit_url)
+          PY
