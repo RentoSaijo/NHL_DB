@@ -68,7 +68,9 @@ jobs:
           )
 
       - name: Install HuggingFace CLI
-        run: python -m pip install --upgrade 'huggingface_hub[cli]'
+        run: |
+          python -m pip install --upgrade 'huggingface_hub==2.0.0'
+          hf upload --help
 
       - name: Generate game parquet files
         run: Rscript R/game.R
@@ -99,8 +101,7 @@ jobs:
             echo "No parquet files were generated; skipping upload."
             exit 0
           fi
-          hf upload-large-folder "$TARGET_REPO" "$NHL_DB_OUTPUT_DIR" \
+          hf upload "$TARGET_REPO" "$NHL_DB_OUTPUT_DIR" . \
             --repo-type dataset \
             --include '*.parquet' \
-            --token "$HF_TOKEN" \
-            --num-workers 4
+            --token "$HF_TOKEN"
